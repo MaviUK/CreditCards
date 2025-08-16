@@ -3,15 +3,12 @@ import { supabase } from "./supabaseClient";
 import Login from "./Login";
 import Dashboard from "./Dashboard";
 
-// eslint-disable-next-line no-unused-vars
-const [session, setSession] = useState(null)
-
 function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     // Check active session
-    const session = supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
     });
 
@@ -29,4 +26,3 @@ function App() {
 }
 
 export default App;
-
