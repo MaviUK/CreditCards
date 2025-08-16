@@ -3,6 +3,9 @@ import { supabase } from "./supabaseClient";
 import Login from "./Login";
 import Dashboard from "./Dashboard";
 
+// eslint-disable-next-line no-unused-vars
+const [session, setSession] = useState(null)
+
 function App() {
   const [user, setUser] = useState(null);
 
@@ -26,3 +29,4 @@ function App() {
 }
 
 export default App;
+
