@@ -1,81 +1,76 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import Login from "./Login";
 
 const App = () => {
+  const [user, setUser] = useState(null);
   const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const [newCard, setNewCard] = useState({
-    name: "",
-    balance: "",
-    available: "",
-    apr: "",
-    dueDate: ""
-  });
-
   const [payments, setPayments] = useState([]);
   const [chargedCard, setChargedCard] = useState("");
   const [paidCard, setPaidCard] = useState("");
   const [amount, setAmount] = useState("");
+  const [newCard, setNewCard] = useState({
+    name: "",
+    balance: "",
+    apr: "",
+    dueDate: "",
+    available: ""
+  });
 
-  // Fetch cards from Supabase on load
+  const terminalFee = (amt) => +(amt * 0.015 + 0.2).toFixed(2);
+  const totalFees = payments.reduce((acc, p) => acc + p.fee, 0);
+  const totalCycled = payments.reduce((acc, p) => acc + p.amount, 0);
+
+  // On mount, get session
   useEffect(() => {
-    async function fetchCards() {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user || null);
+    };
+    getUser();
+  }, []);
+
+  // Load cards for this user
+  useEffect(() => {
+    if (!user) return;
+    const fetchCards = async () => {
       const { data, error } = await supabase
         .from("cards")
         .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) console.error("Error loading cards:", error.message);
-      else setCards(data);
-
-      setLoading(false);
-    }
-
+        .eq("user_id", user.id)
+        .order("due_date", { ascending: true });
+      if (!error) setCards(data);
+    };
     fetchCards();
-  }, []);
-
-  const terminalFee = (amt) => +(amt * 0.015 + 0.2).toFixed(2);
+  }, [user]);
 
   const handleAddCard = async () => {
-    const { name, balance, available, apr, dueDate } = newCard;
-    if (!name || !balance || !available || !apr || !dueDate) return;
-
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
-      alert("User must be logged in to save cards.");
-      return;
-    }
+    const { name, balance, apr, dueDate, available } = newCard;
+    if (!name || !balance || !apr || !dueDate || !available || !user) return;
 
     const { data, error } = await supabase
       .from("cards")
       .insert([
         {
-          user_id: user.data.user.id,
+          user_id: user.id,
           card_name: name,
           balance: parseFloat(balance),
-          available: parseFloat(available),
           apr: parseFloat(apr),
           due_date: dueDate,
+          available: parseFloat(available),
         },
       ])
       .select();
 
-    if (error) {
-      console.error("Error adding card:", error.message);
-    } else {
-      setCards([data[0], ...cards]);
-      setNewCard({ name: "", balance: "", available: "", apr: "", dueDate: "" });
+    if (!error && data) {
+      setCards([...cards, data[0]]);
+      setNewCard({ name: "", balance: "", apr: "", dueDate: "", available: "" });
     }
   };
 
   const handleDeleteCard = async (id) => {
     const { error } = await supabase.from("cards").delete().eq("id", id);
-    if (error) {
-      console.error("Error deleting card:", error.message);
-    } else {
-      setCards(cards.filter((card) => card.id !== id));
-    }
+    if (!error) setCards(cards.filter((c) => c.id !== id));
   };
 
   const handleAddPayment = () => {
@@ -88,11 +83,20 @@ const App = () => {
     setAmount("");
   };
 
-  const totalFees = payments.reduce((acc, p) => acc + p.fee, 0);
-  const totalCycled = payments.reduce((acc, p) => acc + p.amount, 0);
+  if (!user) return <Login onLogin={() => window.location.reload()} />;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6 relative">
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut();
+          setUser(null);
+        }}
+        className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded"
+      >
+        Log out
+      </button>
+
       <h1 className="text-3xl font-bold mb-6 text-center">Credit Card Cycling Dashboard</h1>
 
       {/* Add New Card Form */}
@@ -140,29 +144,25 @@ const App = () => {
       </div>
 
       {/* Card List */}
-      {loading ? (
-        <p className="text-center">Loading cards...</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {cards.map((card) => (
-            <div key={card.id} className="bg-white p-4 rounded-xl shadow relative">
-              <button
-                onClick={() => handleDeleteCard(card.id)}
-                className="absolute top-2 right-2 bg-red-100 hover:bg-red-300 text-red-700 font-bold px-2 py-1 rounded"
-                title="Delete this card"
-              >
-                🗑️
-              </button>
-              <h2 className="text-xl font-semibold">{card.card_name}</h2>
-              <p>Balance: £{parseFloat(card.balance).toFixed(2)}</p>
-              <p>Available: £{parseFloat(card.available).toFixed(2)}</p>
-              <p>Credit Limit: £{(parseFloat(card.balance) + parseFloat(card.available)).toFixed(2)}</p>
-              <p>APR: {card.apr}%</p>
-              <p>Due Date: {card.due_date}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {cards.map((card) => (
+          <div key={card.id} className="bg-white p-4 rounded-xl shadow relative">
+            <button
+              onClick={() => handleDeleteCard(card.id)}
+              className="absolute top-2 right-2 bg-red-100 hover:bg-red-300 text-red-700 font-bold px-2 py-1 rounded"
+              title="Delete this card"
+            >
+              🗑️
+            </button>
+            <h2 className="text-xl font-semibold">{card.card_name}</h2>
+            <p>Balance: £{card.balance.toFixed(2)}</p>
+            <p>Available: £{card.available.toFixed(2)}</p>
+            <p>Total Limit: £{(card.balance + card.available).toFixed(2)}</p>
+            <p>APR: {card.apr}%</p>
+            <p>Due Date: {card.due_date}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Payment Logger */}
       <div className="bg-white p-6 rounded-xl shadow mb-8">
