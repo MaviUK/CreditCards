@@ -1,38 +1,81 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { supabase } from "./supabase";
 
 const App = () => {
-  const [cards, setCards] = useState([
-    { id: 1, name: "Barclaycard", balance: 1200, apr: 29.9, dueDate: "2025-08-25" },
-    { id: 2, name: "Amex", balance: 600, apr: 22.4, dueDate: "2025-08-18" },
-  ]);
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [newCard, setNewCard] = useState({
+    name: "",
+    balance: "",
+    available: "",
+    apr: "",
+    dueDate: ""
+  });
 
   const [payments, setPayments] = useState([]);
   const [chargedCard, setChargedCard] = useState("");
   const [paidCard, setPaidCard] = useState("");
   const [amount, setAmount] = useState("");
 
-  const [newCard, setNewCard] = useState({
-    name: "",
-    balance: "",
-    apr: "",
-    dueDate: ""
-  });
+  // Fetch cards from Supabase on load
+  useEffect(() => {
+    async function fetchCards() {
+      const { data, error } = await supabase
+        .from("cards")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) console.error("Error loading cards:", error.message);
+      else setCards(data);
+
+      setLoading(false);
+    }
+
+    fetchCards();
+  }, []);
 
   const terminalFee = (amt) => +(amt * 0.015 + 0.2).toFixed(2);
 
-  const handleAddCard = () => {
-    if (!newCard.name || !newCard.balance || !newCard.apr || !newCard.dueDate) return;
+  const handleAddCard = async () => {
+    const { name, balance, available, apr, dueDate } = newCard;
+    if (!name || !balance || !available || !apr || !dueDate) return;
 
-    const card = {
-      id: Date.now(),
-      name: newCard.name,
-      balance: parseFloat(newCard.balance),
-      apr: parseFloat(newCard.apr),
-      dueDate: newCard.dueDate,
-    };
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) {
+      alert("User must be logged in to save cards.");
+      return;
+    }
 
-    setCards([...cards, card]);
-    setNewCard({ name: "", balance: "", apr: "", dueDate: "" });
+    const { data, error } = await supabase
+      .from("cards")
+      .insert([
+        {
+          user_id: user.data.user.id,
+          card_name: name,
+          balance: parseFloat(balance),
+          available: parseFloat(available),
+          apr: parseFloat(apr),
+          due_date: dueDate,
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error("Error adding card:", error.message);
+    } else {
+      setCards([data[0], ...cards]);
+      setNewCard({ name: "", balance: "", available: "", apr: "", dueDate: "" });
+    }
+  };
+
+  const handleDeleteCard = async (id) => {
+    const { error } = await supabase.from("cards").delete().eq("id", id);
+    if (error) {
+      console.error("Error deleting card:", error.message);
+    } else {
+      setCards(cards.filter((card) => card.id !== id));
+    }
   };
 
   const handleAddPayment = () => {
@@ -55,7 +98,7 @@ const App = () => {
       {/* Add New Card Form */}
       <div className="bg-white p-6 rounded-xl shadow mb-8">
         <h2 className="text-2xl font-semibold mb-4">Add New Card</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           <input
             type="text"
             placeholder="Card Name"
@@ -68,6 +111,13 @@ const App = () => {
             placeholder="Balance (£)"
             value={newCard.balance}
             onChange={(e) => setNewCard({ ...newCard, balance: e.target.value })}
+            className="p-2 border rounded"
+          />
+          <input
+            type="number"
+            placeholder="Available (£)"
+            value={newCard.available}
+            onChange={(e) => setNewCard({ ...newCard, available: e.target.value })}
             className="p-2 border rounded"
           />
           <input
@@ -89,26 +139,30 @@ const App = () => {
         </button>
       </div>
 
-    {/* Card List */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-  {cards.map((card) => (
-    <div key={card.id} className="bg-white p-4 rounded-xl shadow relative">
-      <button
-        onClick={() => setCards(cards.filter(c => c.id !== card.id))}
-        className="absolute top-2 right-2 bg-red-100 hover:bg-red-300 text-red-700 font-bold px-2 py-1 rounded"
-        title="Delete this card"
-      >
-        🗑️
-      </button>
-      <h2 className="text-xl font-semibold">{card.name}</h2>
-      <p>Balance: £{card.balance.toFixed(2)}</p>
-      <p>APR: {card.apr}%</p>
-      <p>Due Date: {card.dueDate}</p>
-    </div>
-  ))}
-</div>
-
-
+      {/* Card List */}
+      {loading ? (
+        <p className="text-center">Loading cards...</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {cards.map((card) => (
+            <div key={card.id} className="bg-white p-4 rounded-xl shadow relative">
+              <button
+                onClick={() => handleDeleteCard(card.id)}
+                className="absolute top-2 right-2 bg-red-100 hover:bg-red-300 text-red-700 font-bold px-2 py-1 rounded"
+                title="Delete this card"
+              >
+                🗑️
+              </button>
+              <h2 className="text-xl font-semibold">{card.card_name}</h2>
+              <p>Balance: £{parseFloat(card.balance).toFixed(2)}</p>
+              <p>Available: £{parseFloat(card.available).toFixed(2)}</p>
+              <p>Credit Limit: £{(parseFloat(card.balance) + parseFloat(card.available)).toFixed(2)}</p>
+              <p>APR: {card.apr}%</p>
+              <p>Due Date: {card.due_date}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Payment Logger */}
       <div className="bg-white p-6 rounded-xl shadow mb-8">
@@ -116,12 +170,12 @@ const App = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <select value={chargedCard} onChange={(e) => setChargedCard(e.target.value)} className="p-2 border rounded">
             <option value="">Card Charged (Terminal)</option>
-            {cards.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            {cards.map((c) => <option key={c.id} value={c.card_name}>{c.card_name}</option>)}
           </select>
 
           <select value={paidCard} onChange={(e) => setPaidCard(e.target.value)} className="p-2 border rounded">
             <option value="">Card Paid Off</option>
-            {cards.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            {cards.map((c) => <option key={c.id} value={c.card_name}>{c.card_name}</option>)}
           </select>
 
           <input
