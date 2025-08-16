@@ -12,7 +12,8 @@ export default function Dashboard({ user }) {
   });
 
   useEffect(() => {
-    // define fetchCards inside useEffect to avoid missing dependency warning
+    if (!user) return; // Guard: don't run if user isn't loaded yet
+
     const fetchCards = async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -29,9 +30,11 @@ export default function Dashboard({ user }) {
     };
 
     fetchCards();
-  }, [user.id]); // include user.id so it refetches if user changes
+  }, [user]);
 
   const addCard = async () => {
+    if (!user) return; // Guard
+
     const { error } = await supabase.from("cards").insert([
       { ...newCard, user_id: user.id },
     ]);
@@ -39,7 +42,7 @@ export default function Dashboard({ user }) {
       alert(error.message);
     } else {
       setNewCard({ name: "", balance: 0, available: 0, credit_limit: 0 });
-      // refetch cards after adding
+      // Refetch cards
       const { data, error: fetchError } = await supabase
         .from("cards")
         .select("*")
@@ -49,6 +52,8 @@ export default function Dashboard({ user }) {
       else setCards(data);
     }
   };
+
+  if (!user) return <p>Loading user info...</p>; // Show placeholder while user loads
 
   return (
     <div style={{ padding: 20 }}>
@@ -65,7 +70,7 @@ export default function Dashboard({ user }) {
         placeholder="Balance"
         value={newCard.balance}
         onChange={(e) =>
-          setNewCard({ ...newCard, balance: parseFloat(e.target.value) })
+          setNewCard({ ...newCard, balance: parseFloat(e.target.value) || 0 })
         }
       />
       <input
@@ -73,7 +78,7 @@ export default function Dashboard({ user }) {
         placeholder="Available Credit"
         value={newCard.available}
         onChange={(e) =>
-          setNewCard({ ...newCard, available: parseFloat(e.target.value) })
+          setNewCard({ ...newCard, available: parseFloat(e.target.value) || 0 })
         }
       />
       <input
@@ -81,7 +86,7 @@ export default function Dashboard({ user }) {
         placeholder="Total Credit Limit"
         value={newCard.credit_limit}
         onChange={(e) =>
-          setNewCard({ ...newCard, credit_limit: parseFloat(e.target.value) })
+          setNewCard({ ...newCard, credit_limit: parseFloat(e.target.value) || 0 })
         }
       />
       <button onClick={addCard}>Add Card</button>
