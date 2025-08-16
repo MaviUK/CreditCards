@@ -89,16 +89,16 @@ const App = () => {
         </button>
       </div>
 
-      {/* Card List */}
+    {/* Card List */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
   {cards.map((card) => (
     <div key={card.id} className="bg-white p-4 rounded-xl shadow relative">
       <button
         onClick={() => setCards(cards.filter(c => c.id !== card.id))}
-        className="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xl"
-        title="Delete card"
+        className="absolute top-2 right-2 bg-red-100 hover:bg-red-300 text-red-700 font-bold px-2 py-1 rounded"
+        title="Delete this card"
       >
-        &times;
+        🗑️
       </button>
       <h2 className="text-xl font-semibold">{card.name}</h2>
       <p>Balance: £{card.balance.toFixed(2)}</p>
@@ -107,6 +107,7 @@ const App = () => {
     </div>
   ))}
 </div>
+
 
 
       {/* Payment Logger */}
