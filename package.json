@@ -1,9 +1,18 @@
 {
   "name": "cc-cycler",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "update-due-dates": "node updateDueDates.js"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.55.0",
+    "dotenv": "^16.0.0",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.26",
     "react": "^18.2.0",
@@ -11,12 +20,6 @@
     "react-scripts": "5.0.1",
     "tailwindcss": "^3.3.3",
     "web-vitals": "^5.1.0"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
   },
   "browserslist": {
     "production": [
