@@ -32,28 +32,42 @@ function App() {
     else setCards(data);
   };
 
-  // Add Card
-  const addCard = async () => {
-    if (!cardName || balance === "" || creditLimit === "") return;
+// State for new card
+const [dueDate, setDueDate] = useState("");
 
-    const { data, error } = await supabase
-      .from("cards")
-      .insert([
-        {
-          name: cardName,
-          balance: parseFloat(balance),
-          credit_limit: parseFloat(creditLimit),
-        },
-      ])
-      .select();
+// Add Card Function
+const addCard = async () => {
+  if (!cardName || balance === "" || creditLimit === "" || !dueDate) return;
 
-    if (error) console.log("Error adding card:", error);
-    else setCards([...cards, ...data]);
+  const { data, error } = await supabase
+    .from("cards")
+    .insert([
+      {
+        name: cardName,
+        balance: parseFloat(balance),
+        credit_limit: parseFloat(creditLimit),
+        due_date: dueDate,
+      },
+    ])
+    .select();
 
-    setCardName("");
-    setBalance("");
-    setCreditLimit("");
-  };
+  if (error) console.log("Error adding card:", error);
+  else setCards([...cards, ...data]);
+
+  setCardName("");
+  setBalance("");
+  setCreditLimit("");
+  setDueDate("");
+};
+
+// Add date input in the form
+<input
+  type="date"
+  value={dueDate}
+  onChange={(e) => setDueDate(e.target.value)}
+  className="w-full p-2 border rounded"
+/>
+
 
   // Delete Card
   const deleteCard = async (id) => {
