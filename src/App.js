@@ -32,42 +32,29 @@ function App() {
     else setCards(data);
   };
 
-// State for new card
-const [dueDate, setDueDate] = useState("");
+  // Add Card
+  const addCard = async () => {
+    if (!cardName || balance === "" || creditLimit === "") return;
 
-// Add Card Function
-const addCard = async () => {
-  if (!cardName || balance === "" || creditLimit === "" || !dueDate) return;
+    const { data, error } = await supabase
+      .from("cards")
+      .insert([
+        {
+          name: cardName,
+          balance: parseFloat(balance),
+          credit_limit: parseFloat(creditLimit),
+          created_at: new Date(), // <-- Add date here
+        },
+      ])
+      .select();
 
-  const { data, error } = await supabase
-    .from("cards")
-    .insert([
-      {
-        name: cardName,
-        balance: parseFloat(balance),
-        credit_limit: parseFloat(creditLimit),
-        due_date: dueDate,
-      },
-    ])
-    .select();
+    if (error) console.log("Error adding card:", error);
+    else setCards([...cards, ...data]);
 
-  if (error) console.log("Error adding card:", error);
-  else setCards([...cards, ...data]);
-
-  setCardName("");
-  setBalance("");
-  setCreditLimit("");
-  setDueDate("");
-};
-
-// Add date input in the form
-<input
-  type="date"
-  value={dueDate}
-  onChange={(e) => setDueDate(e.target.value)}
-  className="w-full p-2 border rounded"
-/>
-
+    setCardName("");
+    setBalance("");
+    setCreditLimit("");
+  };
 
   // Delete Card
   const deleteCard = async (id) => {
@@ -102,6 +89,12 @@ const addCard = async () => {
       setCards(cards.map((card) => (card.id === id ? data[0] : card)));
       setEditingId(null);
     }
+  };
+
+  // Format date nicely
+  const formatDate = (dateString) => {
+    const options = { year: "numeric", month: "short", day: "numeric" };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   return (
@@ -236,6 +229,9 @@ const addCard = async () => {
                     Balance: £{parseFloat(card.balance).toFixed(2)} / Limit: £
                     {parseFloat(card.credit_limit).toFixed(2)}
                   </p>
+                  <p className="text-gray-400 text-sm">
+                    Added: {formatDate(card.created_at)}
+                  </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-24 h-4 bg-gray-200 rounded-full">
@@ -247,18 +243,20 @@ const addCard = async () => {
                           ? "bg-yellow-400"
                           : "bg-green-500"
                       }`}
-                      style={{ width: `${(card.balance / card.credit_limit) * 100}%` }}
+                      style={{
+                        width: `${(card.balance / card.credit_limit) * 100}%`,
+                      }}
                     ></div>
                   </div>
                   <button
                     onClick={() => startEdit(card)}
-                    className="bg-yellow-400 text-white px-3 py-1 rounded hover:bg-yellow-500"
+                    className="bg-yellow-400 px-2 py-1 rounded hover:bg-yellow-500 text-white"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => deleteCard(card.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    className="bg-red-500 px-2 py-1 rounded hover:bg-red-600 text-white"
                   >
                     Delete
                   </button>
