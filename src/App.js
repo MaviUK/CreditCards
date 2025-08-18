@@ -6,10 +6,12 @@ function App() {
   const [cardName, setCardName] = useState("");
   const [balance, setBalance] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
+  const [dueDate, setDueDate] = useState(""); // ← NEW
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
   const [editingBalance, setEditingBalance] = useState("");
   const [editingLimit, setEditingLimit] = useState("");
+  const [editingDueDate, setEditingDueDate] = useState(""); // ← NEW
 
   // Totals
   const totalBalance = cards.reduce((sum, c) => sum + parseFloat(c.balance), 0);
@@ -34,7 +36,7 @@ function App() {
 
   // Add Card
   const addCard = async () => {
-    if (!cardName || balance === "" || creditLimit === "") return;
+    if (!cardName || balance === "" || creditLimit === "" || !dueDate) return;
 
     const { data, error } = await supabase
       .from("cards")
@@ -43,6 +45,7 @@ function App() {
           name: cardName,
           balance: parseFloat(balance),
           credit_limit: parseFloat(creditLimit),
+          due_date: dueDate, // ← NEW
         },
       ])
       .select();
@@ -53,6 +56,7 @@ function App() {
     setCardName("");
     setBalance("");
     setCreditLimit("");
+    setDueDate(""); // ← CLEAR
   };
 
   // Delete Card
@@ -68,6 +72,7 @@ function App() {
     setEditingName(card.name);
     setEditingBalance(card.balance);
     setEditingLimit(card.credit_limit);
+    setEditingDueDate(card.due_date || ""); // ← NEW
   };
 
   // Save Edit
@@ -78,6 +83,7 @@ function App() {
         name: editingName,
         balance: parseFloat(editingBalance),
         credit_limit: parseFloat(editingLimit),
+        due_date: editingDueDate, // ← NEW
         updated_at: new Date(),
       })
       .eq("id", id)
@@ -117,6 +123,12 @@ function App() {
             placeholder="Credit Limit (£)"
             value={creditLimit}
             onChange={(e) => setCreditLimit(e.target.value)}
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="date" // ← NEW
+            value={dueDate} // ← NEW
+            onChange={(e) => setDueDate(e.target.value)} // ← NEW
             className="w-full p-2 border rounded"
           />
           <button
@@ -199,6 +211,12 @@ function App() {
                   onChange={(e) => setEditingLimit(e.target.value)}
                   className="w-full p-1 border rounded"
                 />
+                <input
+                  type="date"
+                  value={editingDueDate} // ← NEW
+                  onChange={(e) => setEditingDueDate(e.target.value)} // ← NEW
+                  className="w-full p-1 border rounded"
+                />
                 <div className="flex space-x-2 mt-2">
                   <button
                     onClick={() => saveEdit(card.id)}
@@ -212,50 +230,4 @@ function App() {
                   >
                     Cancel
                   </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <h3 className="font-semibold text-lg">{card.name}</h3>
-                  <p className="text-gray-600">
-                    Balance: £{parseFloat(card.balance).toFixed(2)} / Limit: £
-                    {parseFloat(card.credit_limit).toFixed(2)}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-24 h-4 bg-gray-200 rounded-full">
-                    <div
-                      className={`h-4 rounded-full ${
-                        card.balance / card.credit_limit > 0.9
-                          ? "bg-red-500"
-                          : card.balance / card.credit_limit > 0.7
-                          ? "bg-yellow-400"
-                          : "bg-green-500"
-                      }`}
-                      style={{ width: `${(card.balance / card.credit_limit) * 100}%` }}
-                    ></div>
-                  </div>
-                  <button
-                    onClick={() => startEdit(card)}
-                    className="bg-yellow-400 text-white px-3 py-1 rounded hover:bg-yellow-500"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteCard(card.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default App;
+                </div
